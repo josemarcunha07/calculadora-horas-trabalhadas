@@ -142,3 +142,245 @@ function calcularRemuneracao(array $dados, array $config): array
         'adicional_fds_pct'   => $addFds * 100,
     ];
 }
+
+/**
+ * Formata uma data no formato Y-m-d para d/m/Y.
+ */
+function formataData(?string $ymd): string
+{
+    if (empty($ymd)) {
+        return '—';
+    }
+    $dt = DateTime::createFromFormat('Y-m-d', $ymd);
+    return $dt ? $dt->format('d/m/Y') : '—';
+}
+
+/**
+ * Calcula o desconto progressivo do INSS para empregado.
+ */
+function inssEmpregado(float $base, array $faixas): float
+{
+    if ($base <= 0) {
+        return 0.0;
+    }
+    $total = 0.0;
+    $anterior = 0.0;
+
+    foreach ($faixas as $faixa) {
+        $teto = min($base, (float) $faixa['ate']);
+        if ($teto > $anterior) {
+            $total += ($teto - $anterior) * (float) $faixa['aliquota'];
+            $anterior = $teto;
+        }
+        if ($base <= (float) $faixa['ate']) {
+            break;
+        }
+    }
+
+    return round($total, 2);
+}
+
+/**
+ * Calcula o IRRF mensal (tabela 2026 + redução da Lei 15.270/2025).
+ *
+ * @param float $rendimento  Rendimento tributável bruto do mês.
+ * @param float $inss        INSS já descontado do rendimento.
+ * @param int   $dependentes Número de dependentes.
+ */
+function irrfMensal(float $rendimento, float $inss, int $dependentes, array $config): float
+{
+    if ($rendimento <= 0) {
+        return 0.0;
+    }
+
+    $deducaoLegal = $inss + ($dependentes * (float) $config['irrf_dependente']);
+    $deducao = max($deducaoLegal, (float) $config['irrf_desconto_simplificado']);
+    $base = max(0.0, $rendimento - $deducao);
+
+    $imposto = 0.0;
+    foreach ($config['irrf_faixas'] as $faixa) {
+        if ($faixa['ate'] === null || $base <= (float) $faixa['ate']) {
+            $imposto = $base * (float) $faixa['aliquota'] - (float) $faixa['deduzir'];
+            break;
+        }
+    }
+    $imposto = max(0.0, $imposto);
+
+    // Redução da Lei 15.270/2025 (usa o rendimento bruto do mês).
+    $reducao = 0.0;
+    if ($rendimento <= (float) $config['irrf_reducao_isencao']) {
+        $reducao = $imposto;
+    } elseif ($rendimento <= (float) $config['irrf_reducao_limite']) {
+        $reducao = (float) $config['irrf_reducao_constante']
+            - ((float) $config['irrf_reducao_coeficiente'] * $rendimento);
+        $reducao = max(0.0, $reducao);
+    }
+
+    return round(max(0.0, $imposto - $reducao), 2);
+}
+
+/**
+ * Calcula o valor das férias (com 1/3 constitucional e abono pecuniário).
+ */
+function calcFerias(array $dados, array $config): array
+{
+    $salario    = (float) $dados['salario'];
+    $dias       = (float) $dados['dias'];
+    $dependentes = (int) ($dados['dependentes'] ?? 0);
+    $vender     = !empty($dados['vender10']);
+
+    $valorDia = $salario / 30;
+
+    $feriasBase = $valorDia * $dias;
+    $terco      = $feriasBase / 3;
+
+    $abonoDias  = $vender ? 10 : 0;
+    $abono      = $valorDia * $abonoDias;
+    $abonoTerco = $abono / 3;
+
+    $bruto = $feriasBase + $terco + $abono + $abonoTerco;
+
+    $inss = inssEmpregado($bruto, $config['inss_faixas']);
+    $irrf = irrfMensal($bruto, $inss, $dependentes, $config);
+    $liquido = $bruto - $inss - $irrf;
+
+    return [
+        'salario'     => $salario,
+        'valor_dia'   => $valorDia,
+        'dias'        => $dias,
+        'ferias_base' => $feriasBase,
+        'terco'       => $terco,
+        'abono_dias'  => $abonoDias,
+        'abono'       => $abono,
+        'abono_terco' => $abonoTerco,
+        'bruto'       => $bruto,
+        'inss'        => $inss,
+        'irrf'        => $irrf,
+        'liquido'     => $liquido,
+        'dependentes' => $dependentes,
+    ];
+}
+
+/**
+ * Diferença em anos completos entre duas datas.
+ */
+function anosCompletos(DateTime $inicio, DateTime $fim): int
+{
+    return $inicio->diff($fim)->y;
+}
+
+/**
+ * Quantidade de meses (com fração de 15 dias ou mais) entre duas datas.
+ */
+function mesesComFracao(DateTime $inicio, DateTime $fim): int
+{
+    $intervalo = $inicio->diff($fim);
+    $meses = $intervalo->y * 12 + $intervalo->m;
+    if ($intervalo->d >= 15) {
+        $meses++;
+    }
+    return $meses;
+}
+
+/**
+ * Calcula as principais verbas rescisórias (valores estimados).
+ */
+function calcRescisao(array $dados, array $config): array
+{
+    $salario    = (float) $dados['salario'];
+    $dependentes = (int) ($dados['dependentes'] ?? 0);
+    $tipo       = (string) $dados['tipo'];
+    $aviso      = (string) $dados['aviso'];
+    $feriasVencidas = max(0, (int) ($dados['ferias_vencidas'] ?? 0));
+
+    $admissao = DateTime::createFromFormat('Y-m-d', $dados['admissao']);
+    $demissao = DateTime::createFromFormat('Y-m-d', $dados['demissao']);
+
+    $valorDia = $salario / 30;
+
+    // 1) Saldo de salário (dias trabalhados no mês da rescisão)
+    $diasMes = (int) $demissao->format('j');
+    $saldo = $valorDia * $diasMes;
+
+    // 2) Aviso prévio (30 dias + 3 por ano completo, limitado a 90)
+    $anos = anosCompletos($admissao, $demissao);
+    $diasAviso = min(90, 30 + (3 * $anos));
+    $avisoValor = 0.0;
+    if ($aviso === 'indenizado' && in_array($tipo, ['sem_justa', 'acordo'], true)) {
+        $avisoValor = $valorDia * $diasAviso;
+    }
+
+    // 3) Férias vencidas (períodos completos não gozados) + 1/3
+    $feriasVencValor = $feriasVencidas * $salario;
+    $feriasVencTerco = $feriasVencValor / 3;
+
+    // 4) Férias proporcionais + 1/3 (avos do período aquisitivo atual)
+    $mesesTotais = mesesComFracao($admissao, $demissao);
+    $avos = $mesesTotais % 12;
+    $feriasProp = ($salario / 12) * $avos;
+    $feriasPropTerco = $feriasProp / 3;
+
+    // 5) 13º proporcional (meses com 15 dias ou mais no ano da rescisão)
+    $inicioAno = DateTime::createFromFormat('Y-m-d', $demissao->format('Y') . '-01-01');
+    $mesesAno = mesesComFracao($inicioAno, $demissao);
+    $decimoProp = ($salario / 12) * $mesesAno;
+
+    // 6) FGTS e multa rescisória (estimativa sobre os depósitos do contrato)
+    $fgtsDeposito = (float) $config['fgts_aliquota'] * $salario * max(1, $mesesTotais);
+    $multaPct = 0.0;
+    if ($tipo === 'sem_justa') {
+        $multaPct = (float) $config['fgts_multa_sem_justa_causa'];
+    } elseif ($tipo === 'acordo') {
+        $multaPct = (float) $config['fgts_multa_acordo'];
+    }
+    $multa = $fgtsDeposito * $multaPct;
+
+    // Verbas indenizadas (isentas) x verbas tributáveis
+    $feriasIndenizadas = $feriasVencValor + $feriasVencTerco + $feriasProp + $feriasPropTerco;
+
+    $bruto = $saldo + $avisoValor + $feriasIndenizadas + $decimoProp + $multa;
+
+    // Descontos: INSS/IRRF sobre saldo + aviso + 13º (estimativa)
+    $tributavel = $saldo + $avisoValor + $decimoProp;
+    $inss = inssEmpregado($tributavel, $config['inss_faixas']);
+    $irrf = irrfMensal($tributavel, $inss, $dependentes, $config);
+
+    // Aviso prévio não trabalhado em pedido de demissão é descontado.
+    $descontoAviso = 0.0;
+    if ($tipo === 'pedido' && $aviso !== 'trabalhado') {
+        $descontoAviso = $valorDia * 30;
+    }
+
+    $liquido = $bruto - $inss - $irrf - $descontoAviso;
+
+    return [
+        'salario'            => $salario,
+        'tipo'               => $tipo,
+        'aviso'              => $aviso,
+        'admissao'           => $admissao,
+        'demissao'           => $demissao,
+        'dias_mes'           => $diasMes,
+        'anos'               => $anos,
+        'meses_totais'       => $mesesTotais,
+        'avos'               => $avos,
+        'meses_ano'          => $mesesAno,
+        'dias_aviso'         => $diasAviso,
+        'saldo'              => $saldo,
+        'aviso_valor'        => $avisoValor,
+        'ferias_vencidas'    => $feriasVencValor + $feriasVencTerco,
+        'ferias_venc_qtd'    => $feriasVencidas,
+        'ferias_prop'        => $feriasProp + $feriasPropTerco,
+        'ferias_prop_base'   => $feriasProp,
+        'decimo_prop'        => $decimoProp,
+        'fgts_deposito'      => $fgtsDeposito,
+        'multa'              => $multa,
+        'multa_pct'          => $multaPct * 100,
+        'bruto'              => $bruto,
+        'tributavel'         => $tributavel,
+        'inss'               => $inss,
+        'irrf'               => $irrf,
+        'desconto_aviso'     => $descontoAviso,
+        'total_descontos'    => $inss + $irrf + $descontoAviso,
+        'liquido'            => $liquido,
+    ];
+}

@@ -20,9 +20,6 @@ foreach ($profissoes as $categoria => $cargos) {
     }
 }
 
-/*
- * Estado padrão do formulário.
- */
 $form = [
     'profissao'        => '',
     'profissao_custom' => '',
@@ -36,21 +33,18 @@ $form = [
 
 $erros        = [];
 $resultado    = null;
-$enviado      = false;
 $categoriaSel = '';
 $cargoSel     = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $enviado = true;
-
     $form['profissao']        = trim((string) ($_POST['profissao'] ?? ''));
     $form['profissao_custom'] = trim((string) ($_POST['profissao_custom'] ?? ''));
-    $form['salario_base'] = (string) ($_POST['salario_base'] ?? '');
-    $form['horas_dia']    = (string) ($_POST['horas_dia'] ?? '');
-    $form['dias_semana']  = (string) ($_POST['dias_semana'] ?? '');
-    $form['horas_extras'] = (string) ($_POST['horas_extras'] ?? '0');
-    $form['trabalha_fds'] = !empty($_POST['trabalha_fds']);
-    $form['horas_fds']    = (string) ($_POST['horas_fds'] ?? '0');
+    $form['salario_base']     = (string) ($_POST['salario_base'] ?? '');
+    $form['horas_dia']        = (string) ($_POST['horas_dia'] ?? '');
+    $form['dias_semana']      = (string) ($_POST['dias_semana'] ?? '');
+    $form['horas_extras']     = (string) ($_POST['horas_extras'] ?? '0');
+    $form['trabalha_fds']     = !empty($_POST['trabalha_fds']);
+    $form['horas_fds']        = (string) ($_POST['horas_fds'] ?? '0');
 
     $dados = [
         'profissao'        => $form['profissao'],
@@ -78,58 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$cseId   = trim((string) $config['google_cse_id']);
-$cseAtivo = $cseId !== '';
+$paginaAtiva  = 'horas';
+$tituloPagina = $config['app_name'];
+require __DIR__ . '/includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($config['app_name']) ?></title>
-    <meta name="description" content="Calcule quanto você recebe por hora, incluindo horas extras e finais de semana, com base na média salarial da sua categoria profissional.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/style.css">
-</head>
-<body>
-
-<header class="topbar">
-    <div class="topbar__inner">
-        <a class="brand" href="./">
-            <span class="brand__icon">&#9201;</span>
-            <span class="brand__text">Calculadora<span>.horas</span></span>
-        </a>
-
-        <form class="searchbar" id="searchForm" role="search"
-              action="https://www.google.com/search" method="GET" target="_blank">
-            <span class="searchbar__icon">&#128269;</span>
-            <input type="search" name="q" id="searchInput" class="searchbar__input"
-                   placeholder="Pesquise no Google sem sair da página..."
-                   aria-label="Pesquisar no Google" autocomplete="off">
-            <button type="submit" class="searchbar__btn">Pesquisar</button>
-        </form>
-    </div>
-
-    <?php if ($cseAtivo): ?>
-    <div class="cse-panel" id="csePanel" hidden>
-        <div class="cse-panel__header">
-            <strong>Resultados da pesquisa</strong>
-            <button type="button" class="cse-panel__close" id="cseClose" aria-label="Fechar">&times;</button>
-        </div>
-        <div class="gcse-searchresults-only" data-gname="calculadora" data-queryParameterName="q"></div>
-    </div>
-    <?php else: ?>
-    <div class="cse-hint">
-        Dica: configure um <em>Programmable Search Engine</em> em
-        <code>includes/config.php</code> para ver os resultados do Google aqui dentro da página.
-        Enquanto isso, a pesquisa abre em uma nova aba.
-    </div>
-    <?php endif; ?>
-</header>
-
-<main class="container">
 
     <section class="hero">
         <h1>Quanto vale a sua hora?</h1>
@@ -341,21 +287,4 @@ $cseAtivo = $cseId !== '';
         </article>
     </section>
 
-</main>
-
-<footer class="footer">
-    <p>&copy; <?= date('Y') ?> <?= htmlspecialchars($config['app_name']) ?> &middot; Feito com PHP, HTML, CSS e JavaScript.</p>
-</footer>
-
-<script>
-    window.MAPA_PROFISSOES = <?= json_encode($mapaProfissoes, JSON_UNESCAPED_UNICODE) ?>;
-    window.GOOGLE_CSE_ID = <?= json_encode($cseId) ?>;
-</script>
-<script src="assets/js/app.js"></script>
-
-<?php if ($cseAtivo): ?>
-<script async src="https://cse.google.com/cse.js?cx=<?= urlencode($cseId) ?>"></script>
-<?php endif; ?>
-
-</body>
-</html>
+<?php require __DIR__ . '/includes/footer.php'; ?>
