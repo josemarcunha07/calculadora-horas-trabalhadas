@@ -188,12 +188,16 @@ body {
     align-items: center;
     gap: 8px;
     padding: 12px 16px;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
     color: var(--muted);
     text-decoration: none;
+    font-family: inherit;
     font-size: .92rem;
     font-weight: 600;
     white-space: nowrap;
-    border-bottom: 2px solid transparent;
+    cursor: pointer;
     transition: color .2s, border-color .2s;
 }
 
@@ -205,6 +209,10 @@ body {
 }
 
 .mainnav__icon { font-size: 1.05rem; }
+
+/* ---------- Abas ---------- */
+.tabpanel { display: none; }
+.tabpanel.is-active { display: block; }
 
 /* ---------- Layout ---------- */
 .container {

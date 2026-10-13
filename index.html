@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Trabalhista</title>
+    <meta name="description" content="Calcule horas trabalhadas, férias, 13º salário, FGTS, rescisão e insalubridade com valores de referência da CLT 2026.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+    <div class="topbar__inner">
+        <a class="brand" href="#horas" data-tab-link="horas">
+            <span class="brand__icon">&#9201;</span>
+            <span class="brand__text">Calculadora<span>.trabalhista</span></span>
+        </a>
+
+        <form class="searchbar" id="searchForm" role="search"
+              action="https://www.google.com/search" method="GET" target="_blank">
+            <span class="searchbar__icon">&#128269;</span>
+            <input type="search" name="q" id="searchInput" class="searchbar__input"
+                   placeholder="Pesquise no Google sem sair da página..."
+                   aria-label="Pesquisar no Google" autocomplete="off">
+            <button type="submit" class="searchbar__btn">Pesquisar</button>
+        </form>
+    </div>
+
+    <nav class="mainnav" aria-label="Navegação principal">
+        <div class="mainnav__inner">
+            <button type="button" class="mainnav__link is-active" data-tab="horas"><span class="mainnav__icon">&#9201;</span>Horas</button>
+            <button type="button" class="mainnav__link" data-tab="ferias"><span class="mainnav__icon">&#127958;</span>Férias</button>
+            <button type="button" class="mainnav__link" data-tab="decimo"><span class="mainnav__icon">&#127881;</span>13º salário</button>
+            <button type="button" class="mainnav__link" data-tab="fgts"><span class="mainnav__icon">&#128179;</span>FGTS</button>
+            <button type="button" class="mainnav__link" data-tab="rescisao"><span class="mainnav__icon">&#128188;</span>Rescisão</button>
+            <button type="button" class="mainnav__link" data-tab="insalubridade"><span class="mainnav__icon">&#9888;</span>Insalubridade</button>
+        </div>
+    </nav>
+
+    <div id="cseSlot"></div>
+    <div class="cse-hint" id="cseHint">
+        Dica: informe um <em>Programmable Search Engine ID</em> em
+        <code>assets/js/data.js</code> (campo <code>googleCseId</code>) para ver os resultados do Google
+        aqui dentro da página. Enquanto isso, a pesquisa abre em uma nova aba.
+    </div>
+</header>
+
+<main class="container">
+
+    <!-- ===================== HORAS TRABALHADAS ===================== -->
+    <section class="tabpanel is-active" id="tab-horas">
+        <section class="hero">
+            <h1>Quanto vale a sua hora?</h1>
+            <p>Informe sua profissão e sua jornada. Calculamos a média salarial da categoria,
+               o valor da hora normal, as horas extras e o trabalho em finais de semana.</p>
+        </section>
+
+        <div class="grid">
+            <section class="card">
+                <h2 class="card__title">Dados da jornada</h2>
+                <div class="alert alert--error" data-erros hidden></div>
+
+                <form data-calc="horas" novalidate>
+                    <div class="field">
+                        <label for="profissao">Profissão / Cargo</label>
+                        <select name="profissao" id="profissao" required></select>
+                        <small class="field__hint" id="categoriaHint">A média salarial da categoria será preenchida automaticamente.</small>
+                    </div>
+
+                    <div class="field" id="profissaoCustomField" hidden>
+                        <label for="profissao_custom">Qual é a sua profissão?</label>
+                        <input type="text" name="profissao_custom" id="profissao_custom"
+                               placeholder="Ex.: Tatuador(a), Piloto de drone, Barbeiro(a)...">
+                        <small class="field__hint">Não temos uma média para essa profissão — informe o salário abaixo.</small>
+                    </div>
+
+                    <div class="field">
+                        <label for="salario_base">Salário base mensal (R$)</label>
+                        <input type="text" inputmode="decimal" name="salario" id="salario_base" placeholder="Ex.: 3.500,00" required>
+                        <small class="field__hint">Pode ajustar para o seu salário real, se preferir.</small>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="horas_dia">Horas normais por dia</label>
+                            <input type="number" step="0.25" min="0.5" max="24" name="horas_dia" id="horas_dia" value="8" required>
+                        </div>
+                        <div class="field">
+                            <label for="dias_semana">Dias por semana</label>
+                            <input type="number" step="1" min="1" max="7" name="dias_semana" id="dias_semana" value="5" required>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="horas_extras">Horas extras por semana</label>
+                        <input type="number" step="0.5" min="0" name="horas_extras" id="horas_extras" value="0">
+                        <small class="field__hint">Adicional de 50%.</small>
+                    </div>
+
+                    <label class="toggle-card">
+                        <input type="checkbox" name="trabalha_fds" id="trabalha_fds" value="1">
+                        <span class="switch__track"></span>
+                        <span class="toggle-card__text">
+                            <strong>Trabalho em finais de semana</strong>
+                            <small>Inclui horas de sábado, domingo e feriados (adicional de 100%).</small>
+                        </span>
+                    </label>
+
+                    <div class="field" id="fdsField" hidden>
+                        <label for="horas_fds">Horas em finais de semana por semana</label>
+                        <input type="number" step="0.5" min="0" name="horas_fds" id="horas_fds" value="0">
+                        <small class="field__hint">Adicional de 100%.</small>
+                    </div>
+
+                    <button type="submit" class="btn btn--primary">Calcular remuneração</button>
+                </form>
+            </section>
+
+            <section class="card card--result">
+                <h2 class="card__title">Resultado</h2>
+                <div data-result>
+                    <div class="empty">
+                        <span class="empty__icon">&#128202;</span>
+                        <p>Preencha os dados ao lado e clique em <strong>Calcular remuneração</strong>.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <!-- ===================== FÉRIAS ===================== -->
+    <section class="tabpanel" id="tab-ferias">
+        <section class="hero">
+            <h1>Calculadora de Férias</h1>
+            <p>Valor dos dias descansados, adicional de 1/3 constitucional e, se quiser,
+               o abono pecuniário (venda de 10 dias).</p>
+        </section>
+
+        <div class="grid">
+            <section class="card">
+                <h2 class="card__title">Dados das férias</h2>
+                <div class="alert alert--error" data-erros hidden></div>
+
+                <form data-calc="ferias" novalidate>
+                    <div class="field">
+                        <label for="f_salario">Salário bruto mensal (R$)</label>
+                        <input type="text" inputmode="decimal" name="salario" id="f_salario" placeholder="Ex.: 3.500,00" required>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="f_dias">Dias de férias</label>
+                            <input type="number" step="1" min="1" max="30" name="dias" id="f_dias" value="30" required>
+                            <small class="field__hint">Normalmente 30 dias.</small>
+                        </div>
+                        <div class="field">
+                            <label for="f_dependentes">Dependentes (IRRF)</label>
+                            <input type="number" step="1" min="0" name="dependentes" id="f_dependentes" value="0">
+                        </div>
+                    </div>
+
+                    <label class="toggle-card">
+                        <input type="checkbox" name="vender10" id="f_vender10" value="1">
+                        <span class="switch__track"></span>
+                        <span class="toggle-card__text">
+                            <strong>Vender 10 dias (abono pecuniário)</strong>
+                            <small>Você descansa menos e recebe o valor dos dias vendidos + 1/3.</small>
+                        </span>
+                    </label>
+
+                    <button type="submit" class="btn btn--primary">Calcular férias</button>
+                </form>
+            </section>
+
+            <section class="card card--result">
+                <h2 class="card__title">Resultado</h2>
+                <div data-result>
+                    <div class="empty">
+                        <span class="empty__icon">&#127958;</span>
+                        <p>Informe o salário e os dias para ver o valor das férias.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <!-- ===================== 13º SALÁRIO ===================== -->
+    <section class="tabpanel" id="tab-decimo">
+        <section class="hero">
+            <h1>Calculadora de 13º Salário</h1>
+            <p>Quanto você recebe de 13º, proporcional aos meses trabalhados no ano,
+               com os descontos de INSS e IRRF.</p>
+        </section>
+
+        <div class="grid">
+            <section class="card">
+                <h2 class="card__title">Dados do 13º</h2>
+                <div class="alert alert--error" data-erros hidden></div>
+
+                <form data-calc="decimo" novalidate>
+                    <div class="field">
+                        <label for="d_salario">Salário bruto mensal (R$)</label>
+                        <input type="text" inputmode="decimal" name="salario" id="d_salario" placeholder="Ex.: 3.500,00" required>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="d_avos">Meses trabalhados no ano (avos)</label>
+                            <input type="number" step="1" min="0" max="12" name="avos" id="d_avos" value="12" required>
+                            <small class="field__hint">Mês com 15 dias ou mais conta como 1 avo.</small>
+                        </div>
+                        <div class="field">
+                            <label for="d_dependentes">Dependentes (IRRF)</label>
+                            <input type="number" step="1" min="0" name="dependentes" id="d_dependentes" value="0">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn--primary">Calcular 13º</button>
+                </form>
+            </section>
+
+            <section class="card card--result">
+                <h2 class="card__title">Resultado</h2>
+                <div data-result>
+                    <div class="empty">
+                        <span class="empty__icon">&#127881;</span>
+                        <p>Informe o salário e os avos para calcular o 13º.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <!-- ===================== FGTS ===================== -->
+    <section class="tabpanel" id="tab-fgts">
+        <section class="hero">
+            <h1>Calculadora de FGTS</h1>
+            <p>Veja quanto é depositado mensalmente na sua conta do FGTS e simule o saldo
+               acumulado e a multa rescisória.</p>
+        </section>
+
+        <div class="grid">
+            <section class="card">
+                <h2 class="card__title">Dados do FGTS</h2>
+                <div class="alert alert--error" data-erros hidden></div>
+
+                <form data-calc="fgts" novalidate>
+                    <div class="field">
+                        <label for="g_salario">Salário / remuneração mensal (R$)</label>
+                        <input type="text" inputmode="decimal" name="salario" id="g_salario" placeholder="Ex.: 3.500,00" required>
+                    </div>
+
+                    <div class="field">
+                        <label for="g_meses">Meses de trabalho</label>
+                        <input type="number" step="1" min="0" name="meses" id="g_meses" value="12" required>
+                        <small class="field__hint">Depósito mensal de 8% sobre a remuneração.</small>
+                    </div>
+
+                    <label class="toggle-card">
+                        <input type="checkbox" name="incluirDecimo" id="g_decimo" value="1" checked>
+                        <span class="switch__track"></span>
+                        <span class="toggle-card__text">
+                            <strong>Incluir depósito sobre o 13º</strong>
+                            <small>O 13º também gera depósito de 8% de FGTS.</small>
+                        </span>
+                    </label>
+
+                    <button type="submit" class="btn btn--primary">Calcular FGTS</button>
+                </form>
+            </section>
+
+            <section class="card card--result">
+                <h2 class="card__title">Resultado</h2>
+                <div data-result>
+                    <div class="empty">
+                        <span class="empty__icon">&#128179;</span>
+                        <p>Informe o salário e o tempo para simular o FGTS.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <!-- ===================== RESCISÃO ===================== -->
+    <section class="tabpanel" id="tab-rescisao">
+        <section class="hero">
+            <h1>Calculadora de Rescisão</h1>
+            <p>Saldo de salário, aviso prévio, férias vencidas e proporcionais, 13º proporcional
+               e a multa do FGTS.</p>
+        </section>
+
+        <div class="grid">
+            <section class="card">
+                <h2 class="card__title">Dados do contrato</h2>
+                <div class="alert alert--error" data-erros hidden></div>
+
+                <form data-calc="rescisao" novalidate>
+                    <div class="field">
+                        <label for="r_salario">Salário base mensal (R$)</label>
+                        <input type="text" inputmode="decimal" name="salario" id="r_salario" placeholder="Ex.: 3.500,00" required>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="r_admissao">Data de admissão</label>
+                            <input type="date" name="admissao" id="r_admissao" required>
+                        </div>
+                        <div class="field">
+                            <label for="r_demissao">Data de desligamento</label>
+                            <input type="date" name="demissao" id="r_demissao" required>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label for="r_tipo">Motivo da rescisão</label>
+                        <select name="tipo" id="r_tipo">
+                            <option value="sem_justa">Dispensa sem justa causa</option>
+                            <option value="com_justa">Dispensa por justa causa</option>
+                            <option value="pedido">Pedido de demissão</option>
+                            <option value="acordo">Acordo entre as partes (art. 484-A)</option>
+                            <option value="termino">Término de contrato (prazo determinado)</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="r_aviso">Aviso prévio</label>
+                        <select name="aviso" id="r_aviso">
+                            <option value="indenizado">Indenizado (não trabalhado)</option>
+                            <option value="trabalhado">Trabalhado</option>
+                            <option value="nao">Não se aplica</option>
+                        </select>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="r_ferias_vencidas">Férias vencidas (períodos)</label>
+                            <input type="number" step="1" min="0" name="ferias_vencidas" id="r_ferias_vencidas" value="0">
+                        </div>
+                        <div class="field">
+                            <label for="r_dependentes">Dependentes (IRRF)</label>
+                            <input type="number" step="1" min="0" name="dependentes" id="r_dependentes" value="0">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn--primary">Calcular rescisão</button>
+                </form>
+            </section>
+
+            <section class="card card--result">
+                <h2 class="card__title">Resultado</h2>
+                <div data-result>
+                    <div class="empty">
+                        <span class="empty__icon">&#128188;</span>
+                        <p>Preencha os dados do contrato para estimar as verbas rescisórias.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <!-- ===================== INSALUBRIDADE ===================== -->
+    <section class="tabpanel" id="tab-insalubridade">
+        <section class="hero">
+            <h1>Calculadora de Insalubridade</h1>
+            <p>Adicional por insalubridade conforme o grau (10%, 20% ou 40%) e, opcionalmente,
+               o adicional de periculosidade (30%).</p>
+        </section>
+
+        <div class="grid">
+            <section class="card">
+                <h2 class="card__title">Dados do adicional</h2>
+                <div class="alert alert--error" data-erros hidden></div>
+
+                <form data-calc="insalubridade" novalidate>
+                    <div class="field">
+                        <label for="i_grau">Grau de insalubridade</label>
+                        <select name="grau" id="i_grau">
+                            <option value="minimo">Grau mínimo — 10%</option>
+                            <option value="medio" selected>Grau médio — 20%</option>
+                            <option value="maximo">Grau máximo — 40%</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="i_base">Base de cálculo</label>
+                        <select name="baseTipo" id="i_base">
+                            <option value="minimo" selected>Salário mínimo (regra geral)</option>
+                            <option value="salario">Meu salário base (convenção/categoria)</option>
+                        </select>
+                        <small class="field__hint">Desde 2023 o STF definiu o salário mínimo como base padrão.</small>
+                    </div>
+
+                    <div class="field">
+                        <label for="i_salario">Salário base mensal (R$)</label>
+                        <input type="text" inputmode="decimal" name="salario" id="i_salario" placeholder="Ex.: 3.500,00">
+                        <small class="field__hint">Usado se a base for o seu salário ou para periculosidade.</small>
+                    </div>
+
+                    <label class="toggle-card">
+                        <input type="checkbox" name="periculosidade" id="i_periculo" value="1">
+                        <span class="switch__track"></span>
+                        <span class="toggle-card__text">
+                            <strong>Adicional de periculosidade</strong>
+                            <small>30% sobre o salário base (art. 193 da CLT).</small>
+                        </span>
+                    </label>
+
+                    <button type="submit" class="btn btn--primary">Calcular adicional</button>
+                </form>
+            </section>
+
+            <section class="card card--result">
+                <h2 class="card__title">Resultado</h2>
+                <div data-result>
+                    <div class="empty">
+                        <span class="empty__icon">&#9888;</span>
+                        <p>Escolha o grau para calcular o adicional de insalubridade.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+</main>
+
+<footer class="footer">
+    <p>&copy; <span id="ano"></span> Calculadora Trabalhista &middot; Feito com HTML, CSS e JavaScript.</p>
+    <p class="footer__note">Valores de referência (2026). Não substitui o cálculo oficial do seu empregador ou contador.</p>
+</footer>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/calc.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
