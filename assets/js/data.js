@@ -125,3 +125,9 @@ for (const categoria in PROFISSOES) {
         MAPA_PROFISSOES[item.cargo] = { categoria, salario: item.salario };
     }
 }
+
+// `const` no topo de um script NÃO cria propriedade em `window`, então expomos
+// explicitamente para o restante do app (app.js acessa via window.*).
+window.CONFIG = CONFIG;
+window.PROFISSOES = PROFISSOES;
+window.MAPA_PROFISSOES = MAPA_PROFISSOES;
