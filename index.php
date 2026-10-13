@@ -24,13 +24,14 @@ foreach ($profissoes as $categoria => $cargos) {
  * Estado padrão do formulário.
  */
 $form = [
-    'profissao'    => '',
-    'salario_base' => '',
-    'horas_dia'    => '8',
-    'dias_semana'  => '5',
-    'horas_extras' => '0',
-    'trabalha_fds' => false,
-    'horas_fds'    => '0',
+    'profissao'        => '',
+    'profissao_custom' => '',
+    'salario_base'     => '',
+    'horas_dia'        => '8',
+    'dias_semana'      => '5',
+    'horas_extras'     => '0',
+    'trabalha_fds'     => false,
+    'horas_fds'        => '0',
 ];
 
 $erros        = [];
@@ -42,7 +43,8 @@ $cargoSel     = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $enviado = true;
 
-    $form['profissao']    = trim((string) ($_POST['profissao'] ?? ''));
+    $form['profissao']        = trim((string) ($_POST['profissao'] ?? ''));
+    $form['profissao_custom'] = trim((string) ($_POST['profissao_custom'] ?? ''));
     $form['salario_base'] = (string) ($_POST['salario_base'] ?? '');
     $form['horas_dia']    = (string) ($_POST['horas_dia'] ?? '');
     $form['dias_semana']  = (string) ($_POST['dias_semana'] ?? '');
@@ -51,18 +53,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['horas_fds']    = (string) ($_POST['horas_fds'] ?? '0');
 
     $dados = [
-        'profissao'    => $form['profissao'],
-        'salario_base' => valorNumerico($form['salario_base']),
-        'horas_dia'    => valorNumerico($form['horas_dia']),
-        'dias_semana'  => valorNumerico($form['dias_semana']),
-        'horas_extras' => valorNumerico($form['horas_extras']),
-        'trabalha_fds' => $form['trabalha_fds'],
-        'horas_fds'    => valorNumerico($form['horas_fds']),
+        'profissao'        => $form['profissao'],
+        'profissao_custom' => $form['profissao_custom'],
+        'salario_base'     => valorNumerico($form['salario_base']),
+        'horas_dia'        => valorNumerico($form['horas_dia']),
+        'dias_semana'      => valorNumerico($form['dias_semana']),
+        'horas_extras'     => valorNumerico($form['horas_extras']),
+        'trabalha_fds'     => $form['trabalha_fds'],
+        'horas_fds'        => valorNumerico($form['horas_fds']),
     ];
 
     $erros = validaEntrada($dados);
 
-    if (isset($mapaProfissoes[$form['profissao']])) {
+    if ($form['profissao'] === '__outra__') {
+        $categoriaSel = 'Profissão personalizada';
+        $cargoSel     = $form['profissao_custom'];
+    } elseif (isset($mapaProfissoes[$form['profissao']])) {
         $categoriaSel = $mapaProfissoes[$form['profissao']]['categoria'];
         $cargoSel     = $form['profissao'];
     }
@@ -166,8 +172,19 @@ $cseAtivo = $cseId !== '';
                                 <?php endforeach; ?>
                             </optgroup>
                         <?php endforeach; ?>
+                        <option value="__outra__" <?= $form['profissao'] === '__outra__' ? 'selected' : '' ?>>
+                            Outra profissão (não está na lista)
+                        </option>
                     </select>
                     <small class="field__hint" id="categoriaHint">A média salarial da categoria será preenchida automaticamente.</small>
+                </div>
+
+                <div class="field" id="profissaoCustomField" <?= $form['profissao'] === '__outra__' ? '' : 'hidden' ?>>
+                    <label for="profissao_custom">Qual é a sua profissão?</label>
+                    <input type="text" name="profissao_custom" id="profissao_custom"
+                           value="<?= htmlspecialchars($form['profissao_custom']) ?>"
+                           placeholder="Ex.: Tatuador(a), Piloto de drone, Barbeiro(a)...">
+                    <small class="field__hint">Não temos uma média para essa profissão — informe o salário abaixo.</small>
                 </div>
 
                 <div class="field">
@@ -191,22 +208,23 @@ $cseAtivo = $cseId !== '';
                     </div>
                 </div>
 
-                <div class="field-row">
-                    <div class="field">
-                        <label for="horas_extras">Horas extras por semana</label>
-                        <input type="number" step="0.5" min="0" name="horas_extras" id="horas_extras"
-                               value="<?= htmlspecialchars($form['horas_extras']) ?>">
-                        <small class="field__hint">Adicional de <?= number_format($config['adicional_hora_extra'] * 100, 0) ?>%.</small>
-                    </div>
-                    <div class="field">
-                        <label class="switch">
-                            <input type="checkbox" name="trabalha_fds" id="trabalha_fds" value="1"
-                                   <?= $form['trabalha_fds'] ? 'checked' : '' ?>>
-                            <span class="switch__track"></span>
-                            <span class="switch__label">Trabalho em finais de semana</span>
-                        </label>
-                    </div>
+                <div class="field">
+                    <label for="horas_extras">Horas extras por semana</label>
+                    <input type="number" step="0.5" min="0" name="horas_extras" id="horas_extras"
+                           value="<?= htmlspecialchars($form['horas_extras']) ?>">
+                    <small class="field__hint">Adicional de <?= number_format($config['adicional_hora_extra'] * 100, 0) ?>%.</small>
                 </div>
+
+                <label class="toggle-card">
+                    <input type="checkbox" name="trabalha_fds" id="trabalha_fds" value="1"
+                           <?= $form['trabalha_fds'] ? 'checked' : '' ?>>
+                    <span class="switch__track"></span>
+                    <span class="toggle-card__text">
+                        <strong>Trabalho em finais de semana</strong>
+                        <small>Inclui horas de sábado, domingo e feriados (adicional de
+                            <?= number_format($config['adicional_fim_semana'] * 100, 0) ?>%).</small>
+                    </span>
+                </label>
 
                 <div class="field" id="fdsField" <?= $form['trabalha_fds'] ? '' : 'hidden' ?>>
                     <label for="horas_fds">Horas em finais de semana por semana</label>

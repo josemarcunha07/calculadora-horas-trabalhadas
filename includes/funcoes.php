@@ -47,6 +47,9 @@ function validaEntrada(array $dados): array
 
     if (($dados['profissao'] ?? '') === '') {
         $erros[] = 'Selecione uma profissão.';
+    } elseif (($dados['profissao'] ?? '') === '__outra__'
+        && trim((string) ($dados['profissao_custom'] ?? '')) === '') {
+        $erros[] = 'Informe o nome da sua profissão.';
     }
 
     if (($dados['salario_base'] ?? 0) <= 0) {

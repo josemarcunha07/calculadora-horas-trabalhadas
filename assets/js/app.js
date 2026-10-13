@@ -10,6 +10,8 @@
     var selectProfissao = document.getElementById('profissao');
     var inputSalario = document.getElementById('salario_base');
     var categoriaHint = document.getElementById('categoriaHint');
+    var customField = document.getElementById('profissaoCustomField');
+    var customInput = document.getElementById('profissao_custom');
     var mapa = window.MAPA_PROFISSOES || {};
 
     function formataMoeda(valor) {
@@ -21,9 +23,19 @@
 
     if (selectProfissao && inputSalario) {
         selectProfissao.addEventListener('change', function () {
-            var dados = mapa[selectProfissao.value];
+            var valor = selectProfissao.value;
+            var dados = mapa[valor];
+            var ehOutra = valor === '__outra__';
 
-            if (dados) {
+            if (customField) { customField.hidden = !ehOutra; }
+
+            if (ehOutra) {
+                inputSalario.value = '';
+                if (categoriaHint) {
+                    categoriaHint.textContent = 'Profissão personalizada: informe o salário abaixo.';
+                }
+                if (customInput) { customInput.focus(); }
+            } else if (dados) {
                 inputSalario.value = formataMoeda(dados.salario);
                 if (categoriaHint) {
                     categoriaHint.textContent = 'Categoria: ' + dados.categoria +
